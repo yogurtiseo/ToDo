@@ -3,7 +3,6 @@
 # 이 파일은 /tasks 관련 주소(GET, POST, PUT, DELETE)를 처리한다.
 # ---------------------------------------------------------------------
 
-
 # FastAPI에서 URL 주소를 모아 관리할 수 있는 도구를 불러온다.
 from fastapi import APIRouter
 
@@ -16,18 +15,17 @@ import api.schemas.task as task_schema
 router = APIRouter()
 
 
-# 아래는 /tasks 라는 주소에 접속했을 때 실행될 기능(함수)을 만든다.
-
-
-# /task 주소에 GET 방식으로 접근하면 이 함수가 실행된다.
-# (예: 할 일 목록 전체 보기 기능)
-@router.get("/task", response_model=list[task_schema.Task])
+# -------------------------------------------------------------------------
+# 할 일 목록 보기 기능 (GET 방식)
+# 예: /tasks 주소로 접속하면 전체 할 일 목록을 보여준다.
+# -------------------------------------------------------------------------
+@router.get("/tasks", response_model=list[task_schema.Task])
 # response_model -> 응답의 데이터 모양을 정해주는 옵션
 # 여기서는 여러 개의 Task 모델을 리스트 형태로 응답함
 async def list_tasks():
     return [task_schema.Task(id=1, title="첫 번째 ToDo 작업", done=False)]
     # 실제 DB가 없으므로, 예시 데이터를 직접 만들어 응답으로 보낸다.
-    # task_schema.Task(...) 형태로 모델에 맞춰 값을 채운다.
+    # task_schemas.Task(...) 형태로 모델에 맞춰 값을 채운다.
 
 
 # ------------------------------------------------------------------------
@@ -39,16 +37,16 @@ async def list_tasks():
 # TaskCreateResponse: 저장된 결과로 id를 포함해 응답답
 async def create_task(task_body: task_schema.TaskCreate):
     return task_schema.TaskCreateResponse(id=1, **task_body.dict())
-    # DB가 없으므로 임시로 id=1을 부여하고, 받은 데이터를 그대로 반환환
+    # Pydantic v2 기준: task_body.dict() -> task_body.model_dump() 로 변경경
 
 
 # ---------------------------------------------------------------------------
 # 할 일 수정 기능 (PUT 방식)
 # 예: /task/3 -> 번호가 3인 할 일의 내용을 바꾼다.
 # ---------------------------------------------------------------------------
-@router.put("/task/{task_id}")
-async def update_task():
-    pass  # 추후 구현 예정
+@router.put("/task/{task_id}", response_model=task_schema.TaskCreateResponse)
+async def update_task(task_id: int, task_body: task_schema.TaskCreate):
+    return task_schema.TaskCreateResponse(id=task_id, **task_body.model_dump)
 
 
 # ---------------------------------------------------------------------------
@@ -57,4 +55,4 @@ async def update_task():
 # ---------------------------------------------------------------------------
 @router.delete("/task/{task_id}")
 async def delete_task():
-    pass  # 추후 구현 예정
+    return
