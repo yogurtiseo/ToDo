@@ -24,6 +24,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import api.models.task as task_model
 import api.schemas.task as task_schema
 
+# * select:
+#   - SQLAlchemy에서 SELECT 쿼리를 만들 때 사용
+# * Result:
+#   - 쿼리 실행 결과를 담는 객체 (fetchall() 또는 all()로 결과 추출 가능)
+from sqlalchemy import select
+from sqlalchemy.engine import Result
+
 # -----------------------------------------------------------------------------
 # [ 함수: create_task ]
 # 사용자가 보낸 "할 일" 정보를 받아서 실제 DB 저장하는 함수
@@ -31,6 +38,9 @@ import api.schemas.task as task_schema
 
 
 # * 함수 정의: async def ... -> 비동기 DB 작업을 위해 async 사용
+# * 매개변수
+#   - db: 비동기 DB 세션 (AsyncSession)
+#   - task_create: 사용자 요청으로 받은 할 일(Task) 생성용 데이터 (Pydantic 스키마)
 # * 반환값: 저장된 Task 객체 자체 (id가 포함된 상태로 반환됨)
 async def create_task(
     db: AsyncSession, task_create: task_schema.TaskCreate
@@ -55,3 +65,28 @@ async def create_task(
 
     # * 최종적으로 저장된 Task 객체를 반환 (API 응답에서 사용됨)
     return task
+
+
+# ----------------------------------------------------------------------------
+# [ 함수: get_tasks_with_done ]
+# 모든 할 일을 불러오고, 각 할 일이 완료되었는지도 함께 알려주는 함수
+# - '완료 여부'는 Done 테이블에 데이터가 있느지를 기준으로 판다함
+# -------------------------------------------------------------------------
+
+
+# * 반환값: (id, title, done) 형식의 튜플 리스트
+#   - 예: [(1, "공부하기", True), (2, "청소하기", False), ...]
+async def get_tasks_with_done(db: AsyncSession) -> list[tuple[int, str, bool]]:
+    result: Result = await db.execute(
+        select(
+            task_model.Task.id,
+            task_model.Task.title,
+            task_model.Done.id.isnot(None).label("done"),
+            # * Done 테이블에 이 할 일(Task)의 완료 기록이 있으면 -> True
+            # * Done 테이블에 없으면 -> False (아직 완료 안 된 상태)
+            # ※ 이건 SQL에서 '외부 조인'이라는 방법을 써서 확인함
+            #  -> 쉽게 말해, '모든 할 일'을 다 불러오고, 그 중에서 완료된 것도 표시하는 방식
+        ).outerjoin(
+            task_model.Done
+        )  # ※ outerjoin: 할 일이 완료됐는 안 됐든 모두 가져오기
+    )
