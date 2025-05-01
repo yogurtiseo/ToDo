@@ -123,33 +123,59 @@ async def update_task(
     return original
     # * 수정 완료된 Task 객체를 변환함
 
-    # ---------------------------------------------------------------
-    # [ 함수: get_tasks_with_done ]
-    # 모든 할 일을 불러오고, 각 할 일이 완료되었는지도 함께 알려주는 함수
-    # -'완료 여부'는 Done 테이블에 데이터가 있는지 기준으로 판단함
-    # ---------------------------------------------------------------
+    # ------------------------------------------------------------
+    # [ 함수: delete_task ]
+    # 기존 할 일(Task) 객체를 받아서 DB에서 삭제하는 함수
+    # ----------------------------------------------------------
 
-    # * 함수 정의: async def ... -> 비동기 DB 작업을 위해 async 사용
-    # * 반환값: (id, title, done) 형식의 튜플 리스트
-    #   - 예: [(1, "공부하기", True), (2, "청소하기", False), ...]
-    async def get_task_with_done(db: AsyncSession) -> list[tuple[int, str, bool]]:
-        result: Result = await db.excute(
-            # * await: 외부 조인을 포함한 SELECT 쿼리를 DB에 보냄
-            select(
-                task_model.Task.id,
-                task_model.Task.title,
-                task_model.Done.id.isnot(None).label("done"),
-                # * Done 테이블에 이 할 일(Task)의 완료 기록이 있으면 -> True
-                # * Done 테이블에 없으면 -> False (아직 완료 안 된 상태)
-                # ※ 이건 SQL에서 '외부 조인'이라는 방법을 써서 확인함
-                #   -> 쉽게 말해, '모든 할 일'을 다 불러오고, 그 중에서 완료된 것도 표시하는 방식
-            ).outerjoin(
-                task_model.Done
-            )  # ※ outerjoin: 할 일이 완료됐든 안 됐든 모두 가져오기
-        )
+    # 함수 정의: async def ... -> 비동기 DB 작업을 위해 async 사용
+    # * 매개변수:
+    #   - db: 비동기 DB 세션 (AsyncSession)
+    #   - original: 삭제할 Task 객체 (이미 DB에서 조화된 상태)
+    # * 반환값: 없음 (삭제만 수행하고 결과는 따로 반환되지 않음)
 
-        return result.all()
-        # * 쿼리 결과 전체를 리스트 형태로 반환함
+
+async def delete_task(db: AsyncSession, original: task_model.Task) -> None:
+    # * db.delete(original):
+    #   - DB 세션에서 해당 Task 객체를 삭제 대상으로 표시함
+    #   - 실제로 삭제되는 건 아니고 "삭제 준비됨" 상태가 됨
+
+    await db.delete(original)
+    # * await: delete 작업이 완료될 때까지 기다림 (비동기 방식으로 처리)
+
+    await db.commit()
+    # * 실제로 DB에서 데이터를 삭제함
+    #   - commit을 해야 삭제가 최정적으로 반영됨됨
+
+
+# ---------------------------------------------------------------
+# [ 함수: get_tasks_with_done ]
+# 모든 할 일을 불러오고, 각 할 일이 완료되었는지도 함께 알려주는 함수
+# -'완료 여부'는 Done 테이블에 데이터가 있는지 기준으로 판단함
+# ---------------------------------------------------------------
+
+
+# * 함수 정의: async def ... -> 비동기 DB 작업을 위해 async 사용
+# * 반환값: (id, title, done) 형식의 튜플 리스트
+#   - 예: [(1, "공부하기", True), (2, "청소하기", False), ...]
+async def get_task_with_done(db: AsyncSession) -> list[tuple[int, str, bool]]:
+    result: Result = await db.excute(
+        # * await: 외부 조인을 포함한 SELECT 쿼리를 DB에 보냄
+        select(
+            task_model.Task.id,
+            task_model.Task.title,
+            task_model.Done.id.isnot(None).label("done"),
+            # * Done 테이블에 이 할 일(Task)의 완료 기록이 있으면 -> True
+            # * Done 테이블에 없으면 -> False (아직 완료 안 된 상태)
+            # ※ 이건 SQL에서 '외부 조인'이라는 방법을 써서 확인함
+            #   -> 쉽게 말해, '모든 할 일'을 다 불러오고, 그 중에서 완료된 것도 표시하는 방식
+        ).outerjoin(
+            task_model.Done
+        )  # ※ outerjoin: 할 일이 완료됐든 안 됐든 모두 가져오기
+    )
+
+    return result.all()
+    # * 쿼리 결과 전체를 리스트 형태로 반환함
 
 
 # api/cruds/task.py

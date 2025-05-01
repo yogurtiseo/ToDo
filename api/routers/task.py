@@ -113,7 +113,22 @@ async def update_task(
 @router.delete("/task/{task_id}")
 # - task_id: 삭제할 할 일의 번호
 # - response_model이 없으므로 별도 응답 내용 없이 처리 가능 (204 No Content)
-async def delete_task(task_id: int):
-    return
-    # * 실제 구현에서는 삭제 후 상태 코드나 메시지를 반환할 수 있음
-    #   성공 시 상태 코드 (예: 204)나 메시지를 응답으로 보낼 수 있음
+async def delete_task(task_id: int, db: AsyncSession = Depends(get_db)):
+    # * async: 이 함수가 '비동기 함수'임을 나타냄
+    #   - DB와 통신하는 동안 서버가 멈추지 않고 다른 요청도 처리할 수 있음
+    #   - FastAPI는 동시에 많은 요청을 빠르게 처리하기 위해 async 사용을 권장함
+
+    task = await task_crud.get_task(db, task_id=task_id)
+    # * await: 시간이 걸리는 작업(DB 조회)이 끝날 때까지 잠깐 기다림
+    #   - 비동기 DB 세션에서는 데이터를 읽거나 쓸 때 항상 await를 붙여야 함
+
+    # * if: 조건문 -> 특정 조건이 참일 때만 아래 코드를 실행함
+    if task is None:
+        # * raise: 오류(예외)를 의도적으로 발생시킴
+        #   - 해당 Task가 DB에 존재하지 않으면 404 Not Found 오류 발생
+        #   - FastAPI는 이 오류를 받아서 클라이언트에 에러 응답을 자동으로 전송함
+        raise HTTPException(status_code=404, detail="Task not found")
+    return await task_crud.delete_task(db, original=task)
+    # * curd 모듈의 delete_task() 함수를 호출하여 실제로 DB에서 삭제함
+    # * await: 삭제 작업이 끝날 때까지 기다림
+    # * 반환값이 없으므로 FastAPI는 자동으로 204 No Content 응답을 보냄
