@@ -55,7 +55,7 @@ async def list_tasks(db: AsyncSession = Depends(get_db)):
 
     # * await: 시간이 오래 걸리는 작업을 '기다렸다가' 실행을 이어감
     #   - 여기서는 DB 조회 작업을 기다리는데 사용함
-    return await task_crud.get_tasks_with_done(db)
+    return await task_crud.get_task_with_done(db)
     # * 실제 DB에서 모든 할 일을 가져오고, 각 할 일이 완료되었는지도 함께 반환함
     # * 완료 여부는 'Done 테이블에 해당 할 일이 있는지'로 판단단
     #   (외부 조인이라는 방식으로 처리됨 - 모든 할 일을 보여주되, 완료된 것도 함께 표시함)

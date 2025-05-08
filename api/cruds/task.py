@@ -159,7 +159,7 @@ async def delete_task(db: AsyncSession, original: task_model.Task) -> None:
 # * 반환값: (id, title, done) 형식의 튜플 리스트
 #   - 예: [(1, "공부하기", True), (2, "청소하기", False), ...]
 async def get_task_with_done(db: AsyncSession) -> list[tuple[int, str, bool]]:
-    result: Result = await db.excute(
+    result: Result = await db.execute(
         # * await: 외부 조인을 포함한 SELECT 쿼리를 DB에 보냄
         select(
             task_model.Task.id,
