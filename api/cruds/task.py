@@ -164,6 +164,7 @@ async def get_task_with_done(db: AsyncSession) -> list[tuple[int, str, bool]]:
         select(
             task_model.Task.id,
             task_model.Task.title,
+            task_model.Task.due_date,
             task_model.Done.id.isnot(None).label("done"),
             # * Done 테이블에 이 할 일(Task)의 완료 기록이 있으면 -> True
             # * Done 테이블에 없으면 -> False (아직 완료 안 된 상태)
